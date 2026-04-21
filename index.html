@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo Uygulaması</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 480px;
+      padding: 32px;
+      height: fit-content;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: #1a1a2e;
+      margin-bottom: 24px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-row input:focus {
+      border-color: #6c63ff;
+    }
+
+    .input-row button {
+      padding: 10px 18px;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .input-row button:hover {
+      background: #574fd6;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .filters button {
+      flex: 1;
+      padding: 7px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: #666;
+      transition: all 0.2s;
+    }
+
+    .filters button.active {
+      background: #6c63ff;
+      border-color: #6c63ff;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .todo-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1.5px solid #eef0f4;
+      border-radius: 8px;
+      transition: box-shadow 0.2s;
+    }
+
+    .todo-item:hover {
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    .todo-item.completed {
+      opacity: 0.55;
+    }
+
+    .todo-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #6c63ff;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .todo-text {
+      flex: 1;
+      font-size: 0.95rem;
+      color: #333;
+      word-break: break-word;
+    }
+
+    .todo-item.completed .todo-text {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #ccc;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .delete-btn:hover {
+      color: #e05c5c;
+    }
+
+    .footer {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: #999;
+    }
+
+    .clear-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #e05c5c;
+      font-size: 0.82rem;
+      padding: 0;
+    }
+
+    .clear-btn:hover {
+      text-decoration: underline;
+    }
+
+    .empty {
+      text-align: center;
+      color: #bbb;
+      font-size: 0.9rem;
+      padding: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Yapılacaklar</h1>
+
+    <div class="input-row">
+      <input type="text" id="todoInput" placeholder="Yeni görev ekle..." maxlength="200">
+      <button onclick="addTodo()">Ekle</button>
+    </div>
+
+    <div class="filters">
+      <button class="active" data-filter="all" onclick="setFilter('all')">Tümü</button>
+      <button data-filter="active" onclick="setFilter('active')">Aktif</button>
+      <button data-filter="completed" onclick="setFilter('completed')">Tamamlanan</button>
+    </div>
+
+    <ul class="todo-list" id="todoList"></ul>
+
+    <div class="footer">
+      <span id="countText"></span>
+      <button class="clear-btn" onclick="clearCompleted()">Tamamlananları temizle</button>
+    </div>
+  </div>
+
+  <script>
+    let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+    let filter = 'all';
+
+    const input = document.getElementById('todoInput');
+    const list = document.getElementById('todoList');
+    const countText = document.getElementById('countText');
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTodo();
+    });
+
+    function addTodo() {
+      const text = input.value.trim();
+      if (!text) return;
+      todos.push({ id: Date.now(), text, completed: false });
+      input.value = '';
+      save();
+      render();
+    }
+
+    function toggleTodo(id) {
+      const todo = todos.find(t => t.id === id);
+      if (todo) todo.completed = !todo.completed;
+      save();
+      render();
+    }
+
+    function deleteTodo(id) {
+      todos = todos.filter(t => t.id !== id);
+      save();
+      render();
+    }
+
+    function clearCompleted() {
+      todos = todos.filter(t => !t.completed);
+      save();
+      render();
+    }
+
+    function setFilter(f) {
+      filter = f;
+      document.querySelectorAll('.filters button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === f);
+      });
+      render();
+    }
+
+    function save() {
+      localStorage.setItem('todos', JSON.stringify(todos));
+    }
+
+    function render() {
+      const visible = todos.filter(t => {
+        if (filter === 'active') return !t.completed;
+        if (filter === 'completed') return t.completed;
+        return true;
+      });
+
+      if (visible.length === 0) {
+        list.innerHTML = '<li class="empty">Görev yok</li>';
+      } else {
+        list.innerHTML = visible.map(t => `
+          <li class="todo-item ${t.completed ? 'completed' : ''}">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodo(${t.id})">
+            <span class="todo-text">${escapeHtml(t.text)}</span>
+            <button class="delete-btn" onclick="deleteTodo(${t.id})" title="Sil">✕</button>
+          </li>
+        `).join('');
+      }
+
+      const activeCount = todos.filter(t => !t.completed).length;
+      countText.textContent = `${activeCount} görev kaldı`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    render();
+  </script>
+</body>
+</html>
