@@ -71,6 +71,11 @@
       background: #574fd6;
     }
 
+    .input-row button:disabled {
+      background: #b0aee8;
+      cursor: not-allowed;
+    }
+
     .filters {
       display: flex;
       gap: 8px;
@@ -186,15 +191,35 @@
       font-size: 0.9rem;
       padding: 24px 0;
     }
+
+    .loading {
+      text-align: center;
+      color: #aaa;
+      font-size: 0.9rem;
+      padding: 24px 0;
+    }
+
+    .error-msg {
+      background: #fff0f0;
+      border: 1px solid #f5c6c6;
+      color: #c0392b;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Yapılacaklar</h1>
 
+    <div class="error-msg" id="errorMsg"></div>
+
     <div class="input-row">
       <input type="text" id="todoInput" placeholder="Yeni görev ekle..." maxlength="200">
-      <button onclick="addTodo()">Ekle</button>
+      <button id="addBtn" onclick="addTodo()">Ekle</button>
     </div>
 
     <div class="filters">
@@ -203,7 +228,7 @@
       <button data-filter="completed" onclick="setFilter('completed')">Tamamlanan</button>
     </div>
 
-    <ul class="todo-list" id="todoList"></ul>
+    <ul class="todo-list" id="todoList"><li class="loading">Yükleniyor...</li></ul>
 
     <div class="footer">
       <span id="countText"></span>
@@ -212,43 +237,121 @@
   </div>
 
   <script>
-    let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+    const SUPABASE_URL = 'https://vbvfrkjlvvqbjiphhtzm.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidmZya2psdnZxYmppcGhodHptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTU1MjgsImV4cCI6MjA5MjM3MTUyOH0.hue1YT9JluqY7bWsCZwIS7E3aRUZJ9O3MkQc6PiKNaU';
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Prefer': 'return=representation'
+    };
+
+    const API = `${SUPABASE_URL}/rest/v1/todos`;
+
+    let todos = [];
     let filter = 'all';
 
     const input = document.getElementById('todoInput');
+    const addBtn = document.getElementById('addBtn');
     const list = document.getElementById('todoList');
     const countText = document.getElementById('countText');
+    const errorMsg = document.getElementById('errorMsg');
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') addTodo();
     });
 
-    function addTodo() {
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+      setTimeout(() => errorMsg.style.display = 'none', 4000);
+    }
+
+    async function fetchTodos() {
+      try {
+        const res = await fetch(`${API}?order=created_at.asc`, { headers });
+        if (!res.ok) throw new Error(await res.text());
+        todos = await res.json();
+        render();
+      } catch (e) {
+        showError('Görevler yüklenemedi: ' + e.message);
+        list.innerHTML = '<li class="empty">Yüklenemedi</li>';
+      }
+    }
+
+    async function addTodo() {
       const text = input.value.trim();
       if (!text) return;
-      todos.push({ id: Date.now(), text, completed: false });
-      input.value = '';
-      save();
-      render();
+      addBtn.disabled = true;
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ text, completed: false })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const [created] = await res.json();
+        todos.push(created);
+        input.value = '';
+        render();
+      } catch (e) {
+        showError('Görev eklenemedi: ' + e.message);
+      } finally {
+        addBtn.disabled = false;
+      }
     }
 
-    function toggleTodo(id) {
+    async function toggleTodo(id) {
       const todo = todos.find(t => t.id === id);
-      if (todo) todo.completed = !todo.completed;
-      save();
+      if (!todo) return;
+      const newVal = !todo.completed;
+      todo.completed = newVal;
       render();
+      try {
+        const res = await fetch(`${API}?id=eq.${id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ completed: newVal })
+        });
+        if (!res.ok) throw new Error(await res.text());
+      } catch (e) {
+        todo.completed = !newVal;
+        render();
+        showError('Güncellenemedi: ' + e.message);
+      }
     }
 
-    function deleteTodo(id) {
+    async function deleteTodo(id) {
       todos = todos.filter(t => t.id !== id);
-      save();
       render();
+      try {
+        const res = await fetch(`${API}?id=eq.${id}`, {
+          method: 'DELETE',
+          headers
+        });
+        if (!res.ok) throw new Error(await res.text());
+      } catch (e) {
+        showError('Silinemedi: ' + e.message);
+        await fetchTodos();
+      }
     }
 
-    function clearCompleted() {
+    async function clearCompleted() {
+      const completed = todos.filter(t => t.completed);
+      if (!completed.length) return;
       todos = todos.filter(t => !t.completed);
-      save();
       render();
+      try {
+        const res = await fetch(`${API}?completed=eq.true`, {
+          method: 'DELETE',
+          headers
+        });
+        if (!res.ok) throw new Error(await res.text());
+      } catch (e) {
+        showError('Temizlenemedi: ' + e.message);
+        await fetchTodos();
+      }
     }
 
     function setFilter(f) {
@@ -257,10 +360,6 @@
         btn.classList.toggle('active', btn.dataset.filter === f);
       });
       render();
-    }
-
-    function save() {
-      localStorage.setItem('todos', JSON.stringify(todos));
     }
 
     function render() {
@@ -290,7 +389,7 @@
       return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    render();
+    fetchTodos();
   </script>
 </body>
 </html>
