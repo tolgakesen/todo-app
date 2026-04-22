@@ -289,15 +289,18 @@
     }
     .modal-header h3 { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
     .modal-header p  { color: rgba(255,255,255,.75); font-size: 13px; }
-    .modal-body { padding: 24px; }
-    .modal-body input[type="text"] {
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+    .modal-body input[type="text"],
+    .modal-body input[type="datetime-local"] {
       width: 100%; padding: 11px 14px; border: 1.5px solid #dde1e7;
-      border-radius: 9px; font-size: 15px; outline: none;
+      border-radius: 9px; font-size: 15px; outline: none; color: #333;
       transition: border-color .2s, box-shadow .2s;
     }
-    .modal-body input[type="text"]:focus {
+    .modal-body input[type="text"]:focus,
+    .modal-body input[type="datetime-local"]:focus {
       border-color: var(--purple); box-shadow: 0 0 0 3px rgba(108,99,255,.1);
     }
+    .modal-body label { font-size: 12px; font-weight: 600; color: #888; margin-bottom: -6px; }
     .modal-footer {
       padding: 0 24px 20px;
       display: flex; gap: 10px; justify-content: flex-end;
@@ -490,7 +493,10 @@
       <p id="modalDateLabel"></p>
     </div>
     <div class="modal-body">
+      <label>Görev</label>
       <input type="text" id="modalTaskInput" placeholder="Görev açıklaması..." maxlength="200">
+      <label>Planlanan Tarih ve Saat</label>
+      <input type="datetime-local" id="modalPlannedInput">
     </div>
     <div class="modal-footer">
       <button class="modal-cancel" onclick="closeTaskModal()">İptal</button>
@@ -928,10 +934,12 @@ function openAddTaskModal() {
   document.getElementById('modalDateLabel').textContent = '📅 ' + dateLabel;
   document.getElementById('modalTaskInput').value       = '';
 
+  // Pre-fill datetime with clicked day at 09:00
+  const pad = n => String(n).padStart(2, '0');
+  const mm  = pad(m + 1), dd = pad(d);
+  document.getElementById('modalPlannedInput').value = `${y}-${mm}-${dd}T09:00`;
+
   const modal = document.getElementById('taskModal');
-  modal.dataset.y = y;
-  modal.dataset.m = m;
-  modal.dataset.d = d;
   modal.classList.add('open');
   setTimeout(() => document.getElementById('modalTaskInput').focus(), 50);
 }
@@ -952,13 +960,8 @@ async function submitCalTask() {
   const text  = input.value.trim();
   if (!text) { input.focus(); return; }
 
-  const modal = document.getElementById('taskModal');
-  const y = parseInt(modal.dataset.y);
-  const m = parseInt(modal.dataset.m);
-  const d = parseInt(modal.dataset.d);
-
-  // Set time to noon so the badge shows the correct day in any timezone
-  const planned = new Date(y, m, d, 12, 0, 0).toISOString();
+  const plannedVal = document.getElementById('modalPlannedInput').value;
+  const planned    = plannedVal ? new Date(plannedVal).toISOString() : null;
 
   const btn = document.getElementById('modalSubmitBtn');
   btn.disabled = true;
@@ -966,7 +969,7 @@ async function submitCalTask() {
     const res = await fetch(API, {
       method:  'POST',
       headers: hdr(session.access_token),
-      body:    JSON.stringify({ text, completed: false, user_id: session.user.id, planned_at: planned })
+      body:    JSON.stringify({ text, completed: false, user_id: session.user.id, ...(planned && { planned_at: planned }) })
     });
     if (!res.ok) throw new Error(await res.text());
     const [created] = await res.json();
