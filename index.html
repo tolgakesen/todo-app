@@ -536,13 +536,7 @@ async function init() {
     history.replaceState(null, '', window.location.pathname);
     showConfirmed(); return;
   }
-  const stored = localStorage.getItem('sb_session');
-  if (stored) {
-    try {
-      const s = JSON.parse(stored);
-      if (await refreshSession(s.refresh_token)) { showApp(); return; }
-    } catch {}
-  }
+  // Her açılışta login ekranı göster; session bilgisini sakla ama otomatik geçiş yapma
   showAuth();
 }
 
