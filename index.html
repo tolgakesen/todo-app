@@ -235,6 +235,88 @@
     .cal-detail h3 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
     .cal-detail-empty { color: #bbb; font-size: 14px; text-align: center; padding: 20px; }
 
+    /* ── CONTEXT MENU ─────────────────────────── */
+    #calContextMenu {
+      position: fixed;
+      z-index: 1000;
+      background: #fff;
+      border: 1.5px solid #e0deff;
+      border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(108,99,255,.18);
+      padding: 6px;
+      min-width: 200px;
+      display: none;
+      animation: menuPop .12s ease;
+    }
+    @keyframes menuPop {
+      from { opacity: 0; transform: scale(.94); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .ctx-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; border-radius: 7px; cursor: pointer;
+      font-size: 14px; font-weight: 600; color: #444;
+      transition: background .15s;
+    }
+    .ctx-item:hover { background: #f0eeff; color: var(--purple); }
+    .ctx-item .ctx-icon { font-size: 16px; }
+    .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ── ADD TASK MODAL ───────────────────────── */
+    #taskModal {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,.35);
+      display: none; align-items: center; justify-content: center;
+      padding: 16px;
+      animation: fadeIn .15s ease;
+    }
+    #taskModal.open { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-card {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 12px 48px rgba(0,0,0,.18);
+      width: 100%; max-width: 420px;
+      overflow: hidden;
+      animation: slideUp .18s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(18px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-header {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+      padding: 20px 24px 16px;
+    }
+    .modal-header h3 { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+    .modal-header p  { color: rgba(255,255,255,.75); font-size: 13px; }
+    .modal-body { padding: 24px; }
+    .modal-body input[type="text"] {
+      width: 100%; padding: 11px 14px; border: 1.5px solid #dde1e7;
+      border-radius: 9px; font-size: 15px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .modal-body input[type="text"]:focus {
+      border-color: var(--purple); box-shadow: 0 0 0 3px rgba(108,99,255,.1);
+    }
+    .modal-footer {
+      padding: 0 24px 20px;
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .modal-cancel {
+      padding: 10px 20px; border: 1.5px solid #dde1e7; border-radius: 9px;
+      background: #fff; font-size: 14px; font-weight: 600; color: #666;
+      cursor: pointer; transition: all .2s;
+    }
+    .modal-cancel:hover { background: #f5f5f5; }
+    .modal-submit {
+      padding: 10px 24px; border: none; border-radius: 9px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+      color: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .modal-submit:hover    { opacity: .88; }
+    .modal-submit:disabled { opacity: .5; cursor: not-allowed; }
+
     .app-error { background: #fff0f0; border: 1px solid #f5c6c6; color: #c0392b; border-radius: 9px; padding: 10px 16px; font-size: 13px; margin-bottom: 16px; display: none; }
 
     @media (max-width: 600px) {
@@ -386,6 +468,34 @@
     </div>
     <div class="cal-grid" id="calGrid"></div>
     <div class="cal-detail" id="calDetail"></div>
+  </div>
+</div>
+
+<!-- ═══ CONTEXT MENU ══════════════════════════════════════ -->
+<div id="calContextMenu">
+  <div class="ctx-item" onclick="openAddTaskModal()">
+    <span class="ctx-icon">➕</span> Bu güne görev ekle
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="calHideContextMenu()">
+    <span class="ctx-icon">✕</span> Kapat
+  </div>
+</div>
+
+<!-- ═══ ADD TASK MODAL ═════════════════════════════════════ -->
+<div id="taskModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>➕ Yeni Görev Ekle</h3>
+      <p id="modalDateLabel"></p>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="modalTaskInput" placeholder="Görev açıklaması..." maxlength="200">
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeTaskModal()">İptal</button>
+      <button class="modal-submit" id="modalSubmitBtn" onclick="submitCalTask()">Ekle</button>
+    </div>
   </div>
 </div>
 
@@ -726,7 +836,9 @@ function renderCalendar() {
       return `<div class="cal-dot" style="background:${bg}"></div>`;
     }).join('');
 
-    html += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" onclick="calSelectDay(${year},${month},${d})">
+    html += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}"
+      onclick="calSelectDay(${year},${month},${d})"
+      oncontextmenu="calShowContextMenu(event,${year},${month},${d})">
       <div class="cal-day-num">${d}</div>
       ${chips}
       <div class="cal-task-dots" style="margin-top:auto">${dots}</div>
@@ -774,6 +886,100 @@ function renderCalDetail() {
         <button class="del-btn" onclick="deleteTodo(${t.id})" title="Sil">✕</button>
       </li>`).join('')}
     </ul></div>`;
+}
+
+// ── Calendar context menu ─────────────────────────────────────
+let ctxDay = null;
+
+function calShowContextMenu(e, y, m, d) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxDay = {y, m, d};
+
+  const menu = document.getElementById('calContextMenu');
+  menu.style.display = 'block';
+
+  // Position near cursor, keep inside viewport
+  const mw = 210, mh = 90;
+  const left = Math.min(e.clientX, window.innerWidth  - mw - 8);
+  const top  = Math.min(e.clientY, window.innerHeight - mh - 8);
+  menu.style.left = left + 'px';
+  menu.style.top  = top  + 'px';
+}
+
+function calHideContextMenu() {
+  document.getElementById('calContextMenu').style.display = 'none';
+  ctxDay = null;
+}
+
+// Close menu on any click/scroll outside
+document.addEventListener('click',    calHideContextMenu);
+document.addEventListener('scroll',   calHideContextMenu, true);
+document.addEventListener('keydown',  e => { if (e.key === 'Escape') { calHideContextMenu(); closeTaskModal(); } });
+
+// ── Add task modal ────────────────────────────────────────────
+function openAddTaskModal() {
+  if (!ctxDay) return;
+  calHideContextMenu();
+
+  const {y, m, d} = ctxDay;
+  const dateLabel = new Date(y, m, d).toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('modalDateLabel').textContent  = '📅 ' + dateLabel;
+  document.getElementById('modalTaskInput').value        = '';
+
+  // Store selected day for submit
+  document.getElementById('taskModal').dataset.y = y;
+  document.getElementById('taskModal').dataset.m = m;
+  document.getElementById('taskModal').dataset.d = d;
+
+  document.getElementById('taskModal').classList.add('open');
+  setTimeout(() => document.getElementById('modalTaskInput').focus(), 50);
+}
+
+function closeTaskModal() {
+  document.getElementById('taskModal').classList.remove('open');
+}
+
+// Submit via Enter key inside modal
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modalTaskInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitCalTask();
+  });
+});
+
+async function submitCalTask() {
+  const input = document.getElementById('modalTaskInput');
+  const text  = input.value.trim();
+  if (!text) { input.focus(); return; }
+
+  const modal = document.getElementById('taskModal');
+  const y = parseInt(modal.dataset.y);
+  const m = parseInt(modal.dataset.m);
+  const d = parseInt(modal.dataset.d);
+
+  // Set time to noon so the badge shows the correct day in any timezone
+  const planned = new Date(y, m, d, 12, 0, 0).toISOString();
+
+  const btn = document.getElementById('modalSubmitBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(API, {
+      method:  'POST',
+      headers: hdr(session.access_token),
+      body:    JSON.stringify({ text, completed: false, user_id: session.user.id, planned_at: planned })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const [created] = await res.json();
+    todos.push(created);
+    closeTaskModal();
+    // Select the day so user sees the new task in the detail panel
+    calSelectedDay = {y, m, d};
+    renderTodos(); renderDashboard(); renderCalendar();
+  } catch(e) {
+    showAppError('Eklenemedi: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── Boot ─────────────────────────────────────────────────────
