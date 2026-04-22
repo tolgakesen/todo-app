@@ -182,7 +182,8 @@
 
     /* ── DASHBOARD ────────────────────────────── */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+    .stat-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
     .stat-card .stat-icon { font-size: 28px; }
     .stat-card .stat-value { font-size: 32px; font-weight: 800; line-height: 1; }
     .stat-card .stat-label { font-size: 13px; font-weight: 600; opacity: .75; }
@@ -425,22 +426,22 @@
   <!-- ── DASHBOARD ── -->
   <div class="app-section" id="section-dashboard">
     <div class="stats-grid">
-      <div class="stat-card stat-total">
+      <div class="stat-card stat-total"   onclick="goToTasks('all')">
         <div class="stat-icon">📋</div>
         <div class="stat-value" id="statTotal">0</div>
         <div class="stat-label">Toplam Görev</div>
       </div>
-      <div class="stat-card stat-active">
+      <div class="stat-card stat-active"  onclick="goToTasks('active')">
         <div class="stat-icon">🔄</div>
         <div class="stat-value" id="statActive">0</div>
         <div class="stat-label">Aktif</div>
       </div>
-      <div class="stat-card stat-done">
+      <div class="stat-card stat-done"    onclick="goToTasks('completed')">
         <div class="stat-icon">✅</div>
         <div class="stat-value" id="statDone">0</div>
         <div class="stat-label">Tamamlanan</div>
       </div>
-      <div class="stat-card stat-overdue">
+      <div class="stat-card stat-overdue" onclick="goToTasks('overdue')">
         <div class="stat-icon">⚠️</div>
         <div class="stat-value" id="statOverdue">0</div>
         <div class="stat-label">Gecikmiş</div>
@@ -714,6 +715,11 @@ function badgeHtml(t) {
 }
 
 // ── Render: Görevler ─────────────────────────────────────────
+function goToTasks(f) {
+  switchSection('tasks');
+  setFilter(f);
+}
+
 function setFilter(f) {
   filter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));
