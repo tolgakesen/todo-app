@@ -441,9 +441,9 @@ async function refreshSession(rt) {
 }
 
 // ── Screens ──────────────────────────────────────────────────
-function showAuth()      { document.getElementById('authCard').style.display=''; document.getElementById('confirmCard').style.display='none'; document.getElementById('appCard').style.display='none'; document.getElementById('authBody').style.display=''; document.getElementById('verifyScreen').style.display='none'; }
-function showConfirmed() { document.getElementById('authCard').style.display='none'; document.getElementById('confirmCard').style.display=''; document.getElementById('appCard').style.display='none'; }
-function showApp()       { document.getElementById('authCard').style.display='none'; document.getElementById('confirmCard').style.display='none'; document.getElementById('appCard').style.display=''; document.getElementById('userEmailDisplay').textContent = session?.user?.email||''; fetchTodos(); }
+function showAuth()      { document.getElementById('authCard').style.display='block'; document.getElementById('confirmCard').style.display='none'; document.getElementById('appCard').style.display='none'; document.getElementById('authBody').style.display=''; document.getElementById('verifyScreen').style.display='none'; }
+function showConfirmed() { document.getElementById('authCard').style.display='none'; document.getElementById('confirmCard').style.display='block'; document.getElementById('appCard').style.display='none'; }
+function showApp()       { document.getElementById('authCard').style.display='none'; document.getElementById('confirmCard').style.display='none'; document.getElementById('appCard').style.display='block'; document.getElementById('userEmailDisplay').textContent = session?.user?.email||''; fetchTodos(); }
 function goToLogin()     { showAuth(); switchTab('login'); }
 
 function switchTab(tab) {
