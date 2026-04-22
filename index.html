@@ -920,19 +920,19 @@ document.addEventListener('keydown',  e => { if (e.key === 'Escape') { calHideCo
 // ── Add task modal ────────────────────────────────────────────
 function openAddTaskModal() {
   if (!ctxDay) return;
+  const day = {...ctxDay};
   calHideContextMenu();
 
-  const {y, m, d} = ctxDay;
+  const {y, m, d} = day;
   const dateLabel = new Date(y, m, d).toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
-  document.getElementById('modalDateLabel').textContent  = '📅 ' + dateLabel;
-  document.getElementById('modalTaskInput').value        = '';
+  document.getElementById('modalDateLabel').textContent = '📅 ' + dateLabel;
+  document.getElementById('modalTaskInput').value       = '';
 
-  // Store selected day for submit
-  document.getElementById('taskModal').dataset.y = y;
-  document.getElementById('taskModal').dataset.m = m;
-  document.getElementById('taskModal').dataset.d = d;
-
-  document.getElementById('taskModal').classList.add('open');
+  const modal = document.getElementById('taskModal');
+  modal.dataset.y = y;
+  modal.dataset.m = m;
+  modal.dataset.d = d;
+  modal.classList.add('open');
   setTimeout(() => document.getElementById('modalTaskInput').focus(), 50);
 }
 
